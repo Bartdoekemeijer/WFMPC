@@ -21,7 +21,7 @@ Wp.name       = 'ThreeTurbine_mpc';       % Meshing name (see "\bin\core\meshing
 
 global uc;
 
-perturbatie   = -.3;                         % Perturbation of beta1
+perturbatie   = -.4;                         % Perturbation of beta1
 Animate       = 0;                          % Show 2D flow fields every x iterations (0: no plots)
 plotMesh      = 0;                          % Show meshing and turbine locations
 conv_eps      = 1e-6;                       % Convergence threshold
@@ -37,13 +37,11 @@ end
 [Wp,sol,sys,Power,CT,a,Ueffect,input,B1,B2,bc] ...
     = InitWFSim(Wp,options,plotMesh);
 
-B2  = 2*B2;
-
 controller    = struct;
 if Wp.turbine.N==2
-    [beta1,beta2]       = deal(zeros(1,Wp.sim.NN));
+    [a1,a2]         = deal(zeros(1,Wp.sim.NN));
 else
-    [beta1,beta2,beta3] = deal(zeros(1,Wp.sim.NN));
+    [a1,a2,a3]      = deal(zeros(1,Wp.sim.NN));
 end
 
 
@@ -75,11 +73,13 @@ for k=1:Wp.sim.NN-1
         
         if k>2
             
-            beta1(k)           = input{k}.beta(1);
-            beta2(k)           = input{k}.beta(2);
+            % These are only used for plotting
+            a1(k)           = input{k}.beta(1)/(input{k}.beta(1)+1);
+            a2(k)           = input{k}.beta(2)/(input{k}.beta(2)+1);
             if Wp.turbine.N==3
-                beta3(k)       = input{k}.beta(3);
+                a3(k)       = input{k}.beta(3)/(input{k}.beta(3)+1);
             end
+            %
             
             controller         = Computecontrolsignal(Wp,sys,controller,sol,input{k},k,perturbatie);
             
@@ -109,11 +109,11 @@ hold on;grid;hline(controller.ss,'k--');
 title('$\overline{U^r}$ of $T_2$','interpreter','latex')
 ylabel('$\overline{U^r}$ [m/s]','interpreter','latex');
 subplot(2,1,2)
-plot(Wp.sim.time(3:end-2),beta1(3:end-1));hold on;
-plot(Wp.sim.time(3:end-2),beta2(3:end-1),'r');grid;
-ylim([min(min(beta1),min(beta2))-.1 max(max(beta1),max(beta2))+.05]);
-ylabel('a^\prime');xlabel('Time [s]');
-title('\color{blue} a^\prime_1, \color{red} a^\prime_2');
+plot(Wp.sim.time(3:end-2),a1(3:end-1));hold on;
+plot(Wp.sim.time(3:end-2),a2(3:end-1),'r');grid;
+ylim([min(min(a1),min(a2))-.1 max(max(a1),max(a2))+.05]);
+ylabel('a');xlabel('Time [s]');
+title('\color{blue} a_1, \color{red} a_2');
 else
 figure(2);clf
 subplot(3,1,1)
@@ -129,10 +129,10 @@ hline(controller.ss(2),'k--')
 title('$\overline{U^r}$ of $T_3$','interpreter','latex')
 ylabel('$\overline{U^r}$ [m/s]','interpreter','latex');
 subplot(3,1,3)
-plot(Wp.sim.time(3:end-2),beta1(3:end-1));hold on;
-plot(Wp.sim.time(3:end-2),beta2(3:end-1),'k');
-plot(Wp.sim.time(3:end-2),beta3(3:end-1),'r');grid;xlim([0 700])
-ylim([min(min(beta1),min(beta2))-.1 max(max(beta1),max(beta2))+.05]);
-ylabel('$a^\prime$','interpreter','latex');xlabel('Time [s]');
-title('$a^\prime_1$ (blue), $a^\prime_2$ (black), $a^\prime_3$ (red)','interpreter','latex');  
+plot(Wp.sim.time(3:end-2),a1(3:end-1));hold on;
+plot(Wp.sim.time(3:end-2),a2(3:end-1),'k');
+plot(Wp.sim.time(3:end-2),a3(3:end-1),'r');grid;xlim([0 700])
+ylim([min(min(a1),min(a2))-.1 max(max(a1),max(a2))+.05]);
+ylabel('$a$','interpreter','latex');xlabel('$t$ [s]','interpreter','latex');
+title('$a_1$ (blue), $a_2$ (black), $a_3$ (red)','interpreter','latex');  
 end
