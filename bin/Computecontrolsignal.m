@@ -63,7 +63,7 @@ controller.znl(:,k)  = controller.Cz*sol.x;                                 % Su
 
 % Compute control downwind turbines
 uc                   = mpcmove(mpcobj,xmpc,controller.znl(:,k)-controller.ss,controller.r(:,k),[perturbatie;input.phi],mpcoptions);
-%uc                   = zeros(Wp.turbine.N-1,1); %  Uncomment for open-loop
+uc                   = zeros(Wp.turbine.N-1,1); %  Uncomment for open-loop
 controller.x(:,k+1)  = controller.A*controller.x(:,k) + controller.B*[perturbatie;uc;input.phi];
 
 
