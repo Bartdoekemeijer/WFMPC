@@ -118,20 +118,20 @@ else
 figure(2);clf
 subplot(3,1,1)
 plot(Wp.sim.time(3:end-2),controller.znl(1,3:end-1));
-hold on;grid;xlim([0 700])
+hold on;grid;xlim([0 300])
 hline(controller.ss(1),'k--')
 title('$T_2$','interpreter','latex')
 ylabel('$z^1$ [m/s]','interpreter','latex');
 subplot(3,1,2)
 plot(Wp.sim.time(3:end-2),controller.znl(2,3:end-1));
-hold on;grid;xlim([0 700])
+hold on;grid;xlim([0 300])
 hline(controller.ss(2),'k--')
 title('$T_3$','interpreter','latex')
 ylabel('$z^2$ [m/s]','interpreter','latex');
 subplot(3,1,3)
 plot(Wp.sim.time(3:end-2),a1(3:end-1));hold on;
 plot(Wp.sim.time(3:end-2),a2(3:end-1),'k');
-plot(Wp.sim.time(3:end-2),a3(3:end-1),'r');grid;xlim([0 700])
+plot(Wp.sim.time(3:end-2),a3(3:end-1),'r');grid;xlim([0 300])
 ylim([min(min(a1),min(a2))-.1 max(max(a1),max(a2))+.05]);
 ylabel('$a$','interpreter','latex');xlabel('$k$ [s]','interpreter','latex');
 title('$a^1$ (blue), $a^2$ (black), $a^3$ (red)','interpreter','latex');  

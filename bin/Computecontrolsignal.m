@@ -27,8 +27,8 @@ if k==3
     MV         = struct('Min',{-.45;-.45},'Max',{.5;.5},'RateMin',{-.05;-.05},'RateMax',{.05;.05});
     end 
     
-    np = 100;   % Prediction horizon
-    nc = 1;     % Control horizon
+    np = 250;   % Prediction horizon
+    nc = 100;     % Control horizon
     
     mpcobj     = mpc(model,Wp.sim.h,np,nc,[],MV);
     
