@@ -16,8 +16,8 @@ options.Derivatives   = 0;                      % Compute derivatives
 options.startUniform  = 0;                      % Start from a uniform flowfield (true) or a steady-state solution (false)
 options.exportPressures= ~options.Projection;   % Calculate pressure fields
 
-%Wp.name       = 'TwoTurbine_mpc';       % Meshing name (see "\bin\core\meshing.m")
-Wp.name       = 'ThreeTurbine_mpc';       % Meshing name (see "\bin\core\meshing.m")
+Wp.name             = 'ThreeTurbine_mpc';       % Meshing name (see "\bin\core\meshing.m")
+Wp.Turbulencemodel  = 'WFSim1';
 
 global uc;
 
@@ -81,7 +81,7 @@ for k=1:Wp.sim.NN-1
             end
             %
             
-            controller         = Computecontrolsignal(Wp,sys,controller,sol,input{k},k,perturbatie);
+            controller         = Computecontrolsignal(Wp,sys,controller,sol,input{k},k,perturbatie,options);
             
             input{k+1}.beta(1) = input{2}.beta(1) + perturbatie;
             input{k+1}.beta(2) = input{2}.beta(2) + uc(1);
