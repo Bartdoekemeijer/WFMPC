@@ -32,7 +32,7 @@ if k==3
         controller.D          = zeros(size(controller.Cz,1),size([input.beta;input.phi],1));
         ny                    = size(controller.C,1);
     end
-     
+    
     sysMpc     = ss(full(controller.A),full(controller.B),full(controller.Cz*controller.C),controller.D,Wp.sim.h);
     
     if Wp.turbine.N==2
@@ -40,7 +40,7 @@ if k==3
         MV         = struct('Min',-.25,'Max',.6,'RateMin',-.01,'RateMax',.01);
     elseif Wp.turbine.N==3
         model      = setmpcsignals(sysMpc,'MD',[1 4 5 6],'MV',[2 3],'MO',[1 2]);
-        MV         = struct('Min',{-.45;-.45},'Max',{.5;.5},'RateMin',{-.05;-.05},'RateMax',{.05;.05});
+        MV         = struct('Min',{-.45;-.45},'Max',{.5;.5},'RateMin',{-.1;-.1},'RateMax',{.1;.1});
     end
     
     np = 250;   % Prediction horizon
@@ -61,7 +61,17 @@ if k==3
         controller.zl      = zeros(Wp.turbine.N-1,Wp.sim.NN);       % Normalised rotor velocities linear model
         controller.znl     = zeros(Wp.turbine.N-1,Wp.sim.NN);
         controller.z       = zeros(Wp.turbine.N-1,Wp.sim.NN);       % Normalised rotor velocities nonlinear model
-        controller.r       = 0*ones(Wp.turbine.N-1,Wp.sim.NN);      % Reference to sum of rotor velocity of downwind turbines
+        % Give Power reference
+        Uo  = controller.ss;        
+        CTo = controller.CT(2:3);
+        Po  = controller.Power(2:3); 
+        
+        Pr  = Po+[-35000;-35000];
+        Ur  = (Pr./(.5*Wp.site.Rho*pi*(0.5*Wp.turbine.Drotor)^2*.5*CTo)).^(1/3);
+        
+        controller.Pr = repmat(Pr,1,Wp.sim.NN);
+        %controller.r  = repmat((Ur-Uo),1,Wp.sim.NN);  % Reference to sum of rotor velocity of downwind turbines
+        controller.r  = 0*ones(Wp.turbine.N-1,Wp.sim.NN); % For disturbance rejection     
     end
     
     
@@ -79,7 +89,17 @@ controller.znl(:,k)  = controller.Cz*sol.x;                                 % Su
 
 % Compute control downwind turbines
 uc                   = mpcmove(mpcobj,xmpc,controller.znl(:,k)-controller.ss,controller.r(:,k),[perturbatie;input.phi],mpcoptions);
-%uc                   = zeros(Wp.turbine.N-1,1); %  Uncomment for open-loop
+
+% uncomment for no control
+%uc                   = zeros(Wp.turbine.N-1,1);
+
+% uncomment for steady-state control (only two-turbine case)
+% if k<=3
+%     uc                   = zeros(Wp.turbine.N-1,1);
+% else
+%     uc                   = [0.3902;-0.0740];
+% end
+
 controller.x(:,k+1)  = controller.A*controller.x(:,k) + controller.B*[perturbatie;uc;input.phi];
 
 
