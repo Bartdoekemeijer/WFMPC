@@ -4,7 +4,7 @@
 % regulate the change in rotor velocity of the downwind tubines to zero using
 % the axial induction factor of these turbines.
 
-clear; clc; close all;
+clear; clc;
 
 addpath bin
 addpath(genpath('WFSim'))
@@ -13,10 +13,10 @@ addpath(genpath('WFSim'))
 Wp.name      = '6turb_adm_turb';    % Choose which scenario to simulate. See 'bin/core/meshing.m' for the full list.
 
 % Model settings (recommended: leave default)
-scriptOptions.Projection        = 1;        % Solve WFSim by projecting away the continuity equation (bool). Default: false.
+scriptOptions.Projection        = 0;        % Solve WFSim by projecting away the continuity equation (bool). Default: false.
 scriptOptions.Linearversion     = 1;        % Calculate linear system matrices of WFSim (bool).              Default: false.
 scriptOptions.exportLinearSol   = 1;        % Calculate linear solution of WFSim (bool).                     Default: false.
-scriptOptions.Derivatives       = 0;        % Compute derivatives, useful for predictive control (bool).     Default: false.
+scriptOptions.Derivatives       = 1;        % Compute derivatives, useful for predictive control (bool).     Default: false.
 scriptOptions.exportPressures   = ~scriptOptions.Projection;   % Calculate pressure fields. Default: '~scriptOptions.Projection'
 
 % Convergence settings (recommended: leave default)
@@ -26,7 +26,7 @@ scriptOptions.max_it_dyn        = 1;        % Maximum number of iterations for k
 % Display and visualization settings
 scriptOptions.printProgress     = 1;    % Print progress in cmd window every timestep. Default: true.
 scriptOptions.printConvergence  = 0;    % Print convergence values every timestep.     Default: false.
-scriptOptions.Animate           = 100;   % Plot flow fields every [X] iterations (0: no plots). Default: 10.
+scriptOptions.Animate           = 0;   % Plot flow fields every [X] iterations (0: no plots). Default: 10.
 scriptOptions.plotMesh          = 0;    % Plot mesh, turbine locations, and print grid offset values. Default: false.
 
 scriptOptions.Control           = 0;
@@ -50,44 +50,48 @@ end
 
 % Controller variables
 global uc;
-perturbatie      = 1*-.4;                      % Perturbation of beta1 (disturbance rejection)
 controller       = struct;
 
+% disturbance signal
+perturbatie      = [zeros(200,1);.2*ones(Wp.sim.NN+1-200,1)];   % Perturbation on CT' first turbine
+perturbatie      = lsim(tf(1,[50 1]),perturbatie,Wp.sim.time);
+
 % Set control signals constant
-for kk=1:Wp.sim.NN
-    Wp.turbine.input(kk).CT_prime   = 2*ones(Wp.turbine.N,1);
-    Wp.turbine.input(kk).dCT_prime  = zeros(Wp.turbine.N,1);
-    Wp.turbine.input(kk).beta       = 0.25*Wp.turbine.input(kk).CT_prime;
-    Wp.turbine.input(kk).dbeta      = zeros(Wp.turbine.N,1);
+for kk=1:Wp.sim.NN+1
+    Wp.turbine.input(kk).CT_prime    = 1*ones(Wp.turbine.N,1);
+    Wp.turbine.input(kk).dCT_prime   = zeros(Wp.turbine.N,1);
+    Wp.turbine.input(kk).beta        = 0.25*Wp.turbine.input(kk).CT_prime;
+    Wp.turbine.input(kk).dbeta       = zeros(Wp.turbine.N,1);
 end
+% Store perturbationin input vector
+for kk=1:Wp.sim.NN+1
+    Wp.turbine.input(kk).beta(1)     = Wp.turbine.input(kk).beta(1)          + 0.25*perturbatie(kk);
+    Wp.turbine.input(kk).CT_prime(1) = Wp.turbine.input(kk).CT_prime(1)      + perturbatie(kk);
+end
+% load initial flow field
+load 'initial_field'
 
 % Performing forward time propagations
 disp(['Performing ' num2str(Wp.sim.NN) ' forward simulations..']);
 while sol.k < Wp.sim.NN
     
     tic;                    % Start stopwatch
-    [sol,sys]      = WFSim_timestepping(sol,sys,Wp,scriptOptions); % forward timestep: x_k+1 = f(x_k)
+    [sol,sys]        = WFSim_timestepping(sol,sys,Wp,scriptOptions); % forward timestep: x_k+1 = f(x_k)
     
     % Save sol to cell array
     sol_array{sol.k} = sol;
     
-    if sol.k>2
-        
-        controller = Computecontrolsignal(Wp,sys,controller,sol,perturbatie,scriptOptions);
-        
-        for kk=1:Wp.turbine.N-1
-            Wp.turbine.input(sol.k+1).beta(kk+1)     = Wp.turbine.input(1).beta(kk+1) + uc(kk);
-            Wp.turbine.input(sol.k+1).CT_prime(kk+1) = Wp.turbine.input(1).CT_prime(kk+1) + 4*uc(kk);
-        end
-        
-        Wp.turbine.input(sol.k+1).beta(1)            = Wp.turbine.input(1).beta(1) + perturbatie;
-        Wp.turbine.input(sol.k+1).CT_prime(1)        = Wp.turbine.input(1).CT_prime(1) + 4*perturbatie;
-        
-    end
+    % propagate controller
+    controller       = Computecontrolsignal(Wp,sys,controller,sol,perturbatie(sol.k),scriptOptions);
+    
+    % store optimal control signals 'uc' in input vector
+    Wp.turbine.input(sol.k+1).beta(2:end)     = Wp.turbine.input(1).beta(2:end)      + 0.25*uc;
+    Wp.turbine.input(sol.k+1).CT_prime(2:end) = Wp.turbine.input(1).CT_prime(2:end)  + uc;
+    
     CPUTime(sol.k) = toc;   % Stop stopwatch
     
-    
-    % Print progress, if necessary
+ 
+    % Print progress
     if scriptOptions.printProgress
         disp(['Simulated t(' num2str(sol.k) ') = ' num2str(sol.time) ...
             ' s. CPU: ' num2str(CPUTime(sol.k)*1e3,3) ' ms.']);
@@ -102,35 +106,33 @@ while sol.k < Wp.sim.NN
 end;
 disp(['Completed ' num2str(Wp.sim.NN) ' forward simulations. Average CPU time: ' num2str(mean(CPUTime)*10^3,3) ' ms.']);
 
-controller.znl = [zeros(1,Wp.sim.NN); controller.znl];
 for kk=1:Wp.sim.NN
     CT_prime(:,kk) =  Wp.turbine.input(kk).CT_prime;
 end
-
+%%
 seq   = [2 4 6 1 3 5];
-
-figure(1);clf
-ll = 0;
-for kk=seq
-    ll = ll + 1;
-    subplot(2,3,ll)
-    if kk~=1
-        stairs(Wp.sim.time(1:end-1),controller.znl(kk,:),'b');hold on; %This is what you really measure
-        str = strcat('$U_',num2str(kk,'%.0f'),'$');
-        ylabel([str,' [m/s]'],'interpreter','latex');
-        xlabel('$t$ [s]','interpreter','latex')
-        grid;xlim([0 Wp.sim.time(end)]);
-    end
-    if ll==2;title({'Averaged rotor flow velocity $U_{i}$';' '},'interpreter','latex');end;
-    if ll==1;annotation(gcf,'arrow',[0.017 0.08],[0.51 0.51]);end;
-end
-
+s     = 1;
 figure(2);clf
 ll = 0;
 for kk=seq
     ll = ll + 1;
     subplot(2,3,ll)
-    stairs(Wp.sim.time(1:end-1),CT_prime(kk,:),'b');hold on; %This is what you really measure
+    stairs(Wp.sim.time(s:end-1),controller.znl(kk,s:end)/1e6,'b');hold on; 
+    stairs(Wp.sim.time(s:end-1),controller.zl(kk,s:end)/1e6,'r');hold on; 
+    str = strcat('$P_',num2str(kk,'%.0f'),'$');
+    ylabel([str,' [MW]'],'interpreter','latex');
+    xlabel('$t$ [s]','interpreter','latex')
+    grid;xlim([0 Wp.sim.time(end)]);
+    if ll==2;title({'Power $P_{i}$';' '},'interpreter','latex');end;
+    if ll==1;annotation(gcf,'arrow',[0.017 0.08],[0.51 0.51]);end;
+end
+
+figure(3);clf
+ll = 0;
+for kk=seq
+    ll = ll + 1;
+    subplot(2,3,ll)
+    stairs(Wp.sim.time(s:end-1),CT_prime(kk,s:end),'b');hold on; %This is what you really measure
     str = strcat('$CT''_',num2str(kk,'%.0f'),'$');
     ylabel([str,' [-]'],'interpreter','latex');
     xlabel('$t$ [s]','interpreter','latex')
@@ -139,5 +141,17 @@ for kk=seq
     if ll==1;annotation(gcf,'arrow',[0.017 0.08],[0.51 0.51]);end;
 end
 
-
+figure(4);clf
+ll = 0;
+for kk=seq
+    ll = ll + 1;
+    subplot(2,3,ll)
+    stairs(Wp.sim.time(s:end-1),(controller.znl(kk,s:end)-controller.ss.P(kk))/1e6,'b');hold on; 
+    str = strcat('$e_',num2str(kk,'%.0f'),'$');
+    ylabel([str,' [MW]'],'interpreter','latex');
+    xlabel('$t$ [s]','interpreter','latex')
+    grid;xlim([0 Wp.sim.time(end)]);
+    if ll==2;title({'Error power $e_{i}$';' '},'interpreter','latex');end;
+    if ll==1;annotation(gcf,'arrow',[0.017 0.08],[0.51 0.51]);end;
+end
 
