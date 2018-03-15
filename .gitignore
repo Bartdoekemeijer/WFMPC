@@ -7,8 +7,8 @@
 # Compiled MEX binaries (all platforms)
 *.mex*
 
-# Matlab data (all platforms)
-*.mat*
+# Folder with results
+results/*
 
 # Session info
 octave-workspace

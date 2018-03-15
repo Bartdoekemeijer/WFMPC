@@ -11,7 +11,7 @@ powerscale = Wp.turbine.powerscale;
 Ar         = pi*(0.5*Drotor)^2;
 constant   = powerscale*.5*Rho*Ar;
 
-if sol.k==1
+if sol.k>=1
     
     % linearisation points
     controller.ss.U         = zeros(Wp.turbine.N,1);

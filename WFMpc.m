@@ -16,7 +16,7 @@ Wp.name      = '6turb_adm_turb';    % Choose which scenario to simulate. See 'bi
 scriptOptions.Projection        = 0;        % Solve WFSim by projecting away the continuity equation (bool). Default: false.
 scriptOptions.Linearversion     = 1;        % Calculate linear system matrices of WFSim (bool).              Default: false.
 scriptOptions.exportLinearSol   = 1;        % Calculate linear solution of WFSim (bool).                     Default: false.
-scriptOptions.Derivatives       = 1;        % Compute derivatives, useful for predictive control (bool).     Default: false.
+scriptOptions.Derivatives       = 0;        % Compute derivatives, useful for predictive control (bool).     Default: false.
 scriptOptions.exportPressures   = ~scriptOptions.Projection;   % Calculate pressure fields. Default: '~scriptOptions.Projection'
 
 % Convergence settings (recommended: leave default)
@@ -29,7 +29,7 @@ scriptOptions.printConvergence  = 0;    % Print convergence values every timeste
 scriptOptions.Animate           = 0;   % Plot flow fields every [X] iterations (0: no plots). Default: 10.
 scriptOptions.plotMesh          = 0;    % Plot mesh, turbine locations, and print grid offset values. Default: false.
 
-scriptOptions.Control           = 0;
+scriptOptions.Control           = 1;
 
 % WFSim general initialization script
 [Wp,sol,sys] ...
@@ -53,7 +53,7 @@ global uc;
 controller       = struct;
 
 % disturbance signal
-perturbatie      = [zeros(200,1);.2*ones(Wp.sim.NN+1-200,1)];   % Perturbation on CT' first turbine
+perturbatie      = [zeros(200,1);.3*ones(Wp.sim.NN+1-200,1)];   % Perturbation on CT' first turbine
 perturbatie      = lsim(tf(1,[50 1]),perturbatie,Wp.sim.time);
 
 % Set control signals constant
@@ -123,7 +123,7 @@ for kk=seq
     ylabel([str,' [MW]'],'interpreter','latex');
     xlabel('$t$ [s]','interpreter','latex')
     grid;xlim([0 Wp.sim.time(end)]);
-    if ll==2;title({'Power $P_{i}$';' '},'interpreter','latex');end;
+    if ll==2;title({'Power $P_{i}$ (red linear, blue nonlinear)';' '},'interpreter','latex');end;
     if ll==1;annotation(gcf,'arrow',[0.017 0.08],[0.51 0.51]);end;
 end
 
